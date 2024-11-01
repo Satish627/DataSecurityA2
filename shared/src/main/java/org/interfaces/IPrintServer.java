@@ -13,6 +13,4 @@ public interface IPrintServer extends Remote{
     String status(String printer) throws RemoteException;
     String readConfig(String parameter) throws RemoteException;
     void setConfig(String parameter, String value) throws RemoteException;
-
-    void startServer() throws RemoteException;
 }

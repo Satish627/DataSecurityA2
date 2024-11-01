@@ -118,8 +118,8 @@ fabric.properties
 # Compiled class file
 *.class
 
-# Log file
-*.log
+# we want to add Log file
+#*.log
 
 # BlueJ files
 *.ctxt
