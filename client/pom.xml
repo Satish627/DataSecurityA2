@@ -21,12 +21,6 @@
             <artifactId>slf4j-api</artifactId>
             <version>1.7.32</version>
         </dependency>
-        <!-- Logback as the logging implementation -->
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>1.2.6</version>
-        </dependency>
         <dependency>
             <groupId>org.example</groupId>
             <artifactId>shared</artifactId>
