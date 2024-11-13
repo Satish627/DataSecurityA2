@@ -1,14 +1,7 @@
 package models;
 
-import com.sun.jdi.event.StepEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.Appender;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.appender.FileAppender;
-import org.apache.logging.log4j.core.layout.PatternLayout;
-
-import java.io.File;
 import java.io.Serializable;
 import java.util.LinkedList;
 
