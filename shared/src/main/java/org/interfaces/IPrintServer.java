@@ -4,6 +4,7 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 
 public interface IPrintServer extends Remote{
+    boolean login(String email, String password) throws RemoteException;
     void  print(String filename, String printer) throws RemoteException;
     String queue(String printer) throws RemoteException;
     void topQueue(String printer, int job) throws RemoteException;

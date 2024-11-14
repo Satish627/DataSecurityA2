@@ -9,8 +9,23 @@ public class Client {
             IPrintServer server = GetServer.getServerFromRmi();
             Scanner scanner = new Scanner(System.in);
 
+            // Step 1: Login before accessing other functions
+            boolean isLoggedIn = false;
+            while (!isLoggedIn) {
+                System.out.print("Enter email: ");
+                String email = scanner.nextLine();
+                System.out.print("Enter password: ");
+                String password = scanner.nextLine();
+
+                isLoggedIn = server.login(email, password);
+                if (isLoggedIn) {
+                    System.out.println("Login successful!");
+                } else {
+                    System.out.println("Login failed. Please try again.");
+                }
+            }
+
             while (true) {
-                step1:
                 System.out.println("Select a printer");
                 System.out.println("1. Printer1 , 2. Printer2, 3. Printer3");
                 int printer = scanner.nextInt();

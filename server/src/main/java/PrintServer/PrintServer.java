@@ -5,6 +5,12 @@ import org.interfaces.IPrintServer;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.mindrot.jbcrypt.BCrypt;
+
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -29,6 +35,11 @@ public class PrintServer implements IPrintServer {
         UnicastRemoteObject.exportObject(this, 0);
         printers = initDummyPrinters;
         configs = new HashMap<>();
+    }
+
+    @Override
+    public boolean login(String email, String password) throws RemoteException {
+        return verifyPassword(email, password);
     }
 
     @Override
@@ -132,5 +143,21 @@ public class PrintServer implements IPrintServer {
                 .filter(printer -> printer.getName().equalsIgnoreCase(printerName))
                 .findFirst();
     }
+    public boolean verifyPassword(String email, String enteredPassword) {
+        try (BufferedReader reader = new BufferedReader(new FileReader("server/src/main/resources/userCredentials.txt"))) {
+            String credentials;
+            while ((credentials = reader.readLine()) != null) {
+                String[] parts = credentials.split(":");
+                String storedEmail = parts[0];
+                String storedHashedPassword = parts[1];
 
+                if (storedEmail.equalsIgnoreCase(email)) {
+                    return BCrypt.checkpw(enteredPassword, storedHashedPassword);
+                }
+            }
+        } catch (IOException e) {
+            logger.error("Error reading user credentials file", e);
+        }
+        return false;
+    }
 }
