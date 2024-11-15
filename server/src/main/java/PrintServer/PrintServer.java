@@ -12,7 +12,6 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.rmi.AlreadyBoundException;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -27,9 +26,9 @@ public class PrintServer implements IPrintServer {
     private static final String key = "secret";
 
     private static final List<Printer> initDummyPrinters = List.of(
-        new Printer("Printer1"),
-        new Printer("Printer2"),
-        new Printer("Printer3")
+            new Printer("Printer1"),
+            new Printer("Printer2"),
+            new Printer("Printer3")
     );
 
     public PrintServer() throws RemoteException {
@@ -41,66 +40,76 @@ public class PrintServer implements IPrintServer {
 
     @Override
     public String login(String email, String password) throws RemoteException {
-        if (verifyPassword(email, password)) {
-            return generateToken(email);
+        String role = getUserRole(email);
+        if (role != null && verifyPassword(email, password)) {
+            logger.info("Login successful for user: {}", email);
+            return generateToken(email, role);
+        }
+        logger.warn("Login failed for user: {}", email);
+        return null;
+    }
+
+    private String getUserRole(String email) {
+        try (BufferedReader reader = new BufferedReader(new FileReader("server/src/main/resources/userCredentials.txt"))) {
+            String role;
+            while ((role = reader.readLine()) != null) {
+                String[] parts = role.split(":");
+                if (parts[0].equalsIgnoreCase(email)) {
+                    return parts[2];
+                }
+            }
+        } catch (IOException e) {
+            logger.error("Error reading user credentials file", e);
         }
         return null;
     }
+
     @Override
     public void print(String token, String filename, String printer) throws RemoteException {
-        if (validateToken(token)) {
-            Optional<Printer> result = findPrinter(printer);
-            if (result.isEmpty()) {
-                logger.warn("Printer not found: " + printer);
-                return;
-            }
-            result.get().print(filename);
-        } else {
-            logger.warn("Authentication failed... invalid token");
-        }
-    }
-
-
-    @Override
-    public String queue(String token,String printer) throws RemoteException {
-        if(!validateToken(token)){
-            logger.warn("Authentication failed... invalid or expired token");
-            return "Authentication failed. Please log in again.";
-        }
+        checkAccess(token, "Print");
 
         Optional<Printer> result = findPrinter(printer);
         if (result.isEmpty()) {
-            logger.warn("Printer not found: " + printer);
-            return "Printer not found";
+            throw new RemoteException("Printer not found.");
         }
+        result.get().print(filename);
+        logger.info("Print request sent to {} by user with token: {}", printer, token);
+    }
+
+    @Override
+    public String queue(String token, String printer) throws RemoteException {
+        checkAccess(token, "Queue");
+
+        Optional<Printer> result = findPrinter(printer);
+        if (result.isEmpty()) {
+            throw new RemoteException("Printer not found.");
+        }
+        logger.info("Queue request for {} by user with token: {}", printer, token);
         return result.get().getjobsQueueAsString();
     }
 
     @Override
-    public void topQueue(String token,String printer, int job) throws RemoteException {
-        if(!validateToken(token)){
-            logger.warn("Authentication failed... invalid or expired token");
-        }
+    public void topQueue(String token, String printer, int job) throws RemoteException {
+        checkAccess(token, "TopQueue");
 
         Optional<Printer> result = findPrinter(printer);
         if (result.isEmpty()) {
-            logger.warn("Printer not found: " + printer);
-            return;
+            throw new RemoteException("Printer not found.");
         }
         result.get().topQueue(job);
+        logger.info("Job {} moved to top of queue on {} by user with token: {}", job, printer, token);
     }
 
     @Override
     public void start() throws RemoteException {
-        Registry registry = LocateRegistry.createRegistry(1099);
         try {
+            Registry registry = LocateRegistry.createRegistry(1099);
             registry.bind("server", this);
-            logger.info("Server has started....");
+            logger.info("Server has started...");
         } catch (AlreadyBoundException e) {
             logger.error("Server binding failed: already bound", e);
             throw new RuntimeException(e);
         }
-        logger.info("Server started.....");
     }
 
     @Override
@@ -109,65 +118,73 @@ public class PrintServer implements IPrintServer {
             Registry registry = LocateRegistry.getRegistry(1099);
             registry.unbind("server");
             logger.info("Print server has stopped...");
-        } catch (RemoteException e) {
-            logger.error("Failed to stop the print server due to a remote exception", e);
-        } catch (NotBoundException e) {
-            logger.error("Print server was not bound when trying to stop");
+        } catch (Exception e) {
+            logger.error("Error stopping the print server.", e);
         }
     }
-
 
     @Override
     public void restart() throws RemoteException {
         logger.info("Restarting print server...");
         this.stop();
         this.start();
-
     }
 
     @Override
-    public String status(String token,String printer) throws RemoteException {
-        if(!validateToken(token)){
-            logger.warn("Authentication failed... invalid or expired token");
-            return "Authentication failed. Please log in again.";
-        }
+    public String status(String token, String printer) throws RemoteException {
+        checkAccess(token, "Status");
 
         Optional<Printer> result = findPrinter(printer);
         if (result.isEmpty()) {
-            logger.warn("Printer not found: " + printer);
-            return "Printer not found";
+            throw new RemoteException("Printer not found.");
         }
+        logger.info("Status request for {} by user with token: {}", printer, token);
         return result.get().getStatus();
     }
 
     @Override
-    public String readConfig(String token,String parameter) throws RemoteException {
-        if(!validateToken(token)){
-            logger.warn("Authentication failed... invalid or expired token");
-            return "Authentication failed. Please log in again.";
-        }
+    public String readConfig(String token, String parameter) throws RemoteException {
+        checkAccess(token, "ReadConfig");
 
         String value = configs.get(parameter);
-
         if (value == null) {
-            logger.warn("Config read: parameter '" + parameter + "' does not exist.");
-            return "Parameter not found";
+            logger.warn("Config read: parameter '{}' does not exist.", parameter);
+            return "Parameter not found.";
         }
 
-        logger.debug("Config read: " + parameter + " = " + value);
+        logger.info("Read config '{}' by user with token: {}", parameter, token);
         return value;
     }
 
 
     @Override
-    public void setConfig(String token,String parameter, String value) throws RemoteException {
-        if(!validateToken(token)){
-            logger.warn("Authentication failed... invalid or expired token");
-        }
+    public void setConfig(String token, String parameter, String value) throws RemoteException {
+        checkAccess(token, "SetConfig");
 
         configs.put(parameter, value);
-        logger.info("Config set: " + parameter + " = " + value);
+        logger.info("Set config '{}' = '{}' by user with token: {}", parameter, value, token);
+    }
 
+    @Override
+    public boolean hasPermission(String token, String permission) throws RemoteException {
+        String role = getRoleFromToken(token);
+        if (role == null) {
+            logger.warn("No user role found for token: {}", token);
+            return false;
+        }
+
+        Map<String, List<String>> rolePermissions = Map.of(
+                "Admin", List.of("Print", "Queue", "TopQueue", "Status", "ReadConfig", "SetConfig"),
+                "User", List.of("Print", "Queue", "Status")
+        );
+
+        List<String> permissions = rolePermissions.get(role);
+        if (permissions != null && permissions.contains(permission)) {
+            return true;
+        } else {
+            logger.warn("Role '{}' does not have permission for '{}'", role, permission);
+            return false;
+        }
     }
 
     private Optional<Printer> findPrinter(String printerName) {
@@ -175,6 +192,57 @@ public class PrintServer implements IPrintServer {
                 .filter(printer -> printer.getName().equalsIgnoreCase(printerName))
                 .findFirst();
     }
+
+    private boolean validateToken(String token) throws RemoteException {
+        try {
+            Jws<Claims> claims = Jwts.parser()
+                    .setSigningKey(key)
+                    .parseClaimsJws(token);
+            Date expiration = claims.getBody().getExpiration();
+            if (expiration.before(new Date())) {
+                throw new RemoteException("Token expired. Please log in again.");
+            }
+            return true;
+        } catch (ExpiredJwtException e) {
+            throw new RemoteException("Token expired. Please log in again.");
+        } catch (Exception e) {
+            logger.warn("Token validation error.", e);
+            throw new RemoteException("Authentication failed. Invalid token.");
+        }
+    }
+
+    private String generateToken(String email, String role) {
+        return Jwts.builder()
+                .setSubject(email)
+                .claim("role", role)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 86400000))
+                .signWith(SignatureAlgorithm.HS256, key)
+                .compact();
+    }
+
+    private String getRoleFromToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(key)
+                    .parseClaimsJws(token)
+                    .getBody();
+            return claims.get("role", String.class);
+        } catch (Exception e) {
+            logger.warn("Error extracting role from token.", e);
+            return null;
+        }
+    }
+
+    private void checkAccess(String token, String permission) throws RemoteException {
+        if (!validateToken(token)) {
+            throw new RemoteException("Authentication failed. Invalid or expired token.");
+        }
+        if (!hasPermission(token, permission)) {
+            throw new RemoteException("You do not have permission to perform this action.");
+        }
+    }
+
     public boolean verifyPassword(String email, String enteredPassword) {
         try (BufferedReader reader = new BufferedReader(new FileReader("server/src/main/resources/userCredentials.txt"))) {
             String credentials;
@@ -192,30 +260,4 @@ public class PrintServer implements IPrintServer {
         }
         return false;
     }
-    private String generateToken(String email) {
-        String token = Jwts.builder()
-                .setSubject(email)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 86400000))
-                .signWith(SignatureAlgorithm.HS256, key)
-                .compact();
-        logger.info("Generated Token: " + token);
-        return token;
-    }
-
-    private boolean validateToken(String token) {
-        try {
-            Jws<Claims> claims = Jwts.parser()
-                    .setSigningKey(key)
-                    .parseClaimsJws(token);
-            return claims.getBody().getExpiration().after(new Date());
-        } catch (SignatureException e) {
-            logger.warn("Invalid token signature.");
-            return false;
-        } catch (Exception e) {
-            logger.warn("Token validation error.");
-            return false;
-        }
-    }
-
 }

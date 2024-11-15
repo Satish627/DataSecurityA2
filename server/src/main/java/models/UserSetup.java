@@ -29,7 +29,7 @@ public class UserSetup {
         String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
 
         try (BufferedWriter writeToFile = new BufferedWriter(new FileWriter("server/src/main/resources/userCredentials.txt", true))) {
-            writeToFile.write( email + ":" + hashedPassword);
+            writeToFile.write( email + ":" + hashedPassword +":User");
             writeToFile.newLine();
             System.out.println("New user added successfully!");
         } catch (IOException e) {
@@ -39,5 +39,6 @@ public class UserSetup {
 
     public static void main(String[] args) {
         createUser("user@gmail.com", "password123");
+        createUser("admin@gmail.com", "admin123");
     }
 }

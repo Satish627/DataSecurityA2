@@ -15,4 +15,6 @@ public interface IPrintServer extends Remote{
     String status(String token,String printer) throws RemoteException;
     String readConfig(String token,String parameter) throws RemoteException;
     void setConfig(String token,String parameter, String value) throws RemoteException;
+
+    boolean hasPermission(String token, String permission) throws  RemoteException;
 }
