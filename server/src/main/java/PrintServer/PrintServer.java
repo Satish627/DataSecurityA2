@@ -1,5 +1,6 @@
 package PrintServer;
 
+import io.jsonwebtoken.*;
 import models.Printer;
 import org.interfaces.IPrintServer;
 
@@ -8,7 +9,6 @@ import org.apache.logging.log4j.Logger;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.rmi.AlreadyBoundException;
@@ -24,6 +24,8 @@ public class PrintServer implements IPrintServer {
     private final Map<String, String> configs;
     private final List<Printer> printers;
 
+    private static final String key = "secret";
+
     private static final List<Printer> initDummyPrinters = List.of(
         new Printer("Printer1"),
         new Printer("Printer2"),
@@ -38,22 +40,34 @@ public class PrintServer implements IPrintServer {
     }
 
     @Override
-    public boolean login(String email, String password) throws RemoteException {
-        return verifyPassword(email, password);
-    }
-
-    @Override
-    public void print(String filename, String printer) throws RemoteException {
-        Optional<Printer> result = findPrinter(printer);
-        if (result.isEmpty()) {
-            logger.warn("Printer not found: " + printer);
-            return;
+    public String login(String email, String password) throws RemoteException {
+        if (verifyPassword(email, password)) {
+            return generateToken(email);
         }
-        result.get().print(filename);
+        return null;
+    }
+    @Override
+    public void print(String token, String filename, String printer) throws RemoteException {
+        if (validateToken(token)) {
+            Optional<Printer> result = findPrinter(printer);
+            if (result.isEmpty()) {
+                logger.warn("Printer not found: " + printer);
+                return;
+            }
+            result.get().print(filename);
+        } else {
+            logger.warn("Authentication failed... invalid token");
+        }
     }
 
+
     @Override
-    public String queue(String printer) throws RemoteException {
+    public String queue(String token,String printer) throws RemoteException {
+        if(!validateToken(token)){
+            logger.warn("Authentication failed... invalid or expired token");
+            return "Authentication failed. Please log in again.";
+        }
+
         Optional<Printer> result = findPrinter(printer);
         if (result.isEmpty()) {
             logger.warn("Printer not found: " + printer);
@@ -63,7 +77,11 @@ public class PrintServer implements IPrintServer {
     }
 
     @Override
-    public void topQueue(String printer, int job) throws RemoteException {
+    public void topQueue(String token,String printer, int job) throws RemoteException {
+        if(!validateToken(token)){
+            logger.warn("Authentication failed... invalid or expired token");
+        }
+
         Optional<Printer> result = findPrinter(printer);
         if (result.isEmpty()) {
             logger.warn("Printer not found: " + printer);
@@ -108,7 +126,12 @@ public class PrintServer implements IPrintServer {
     }
 
     @Override
-    public String status(String printer) throws RemoteException {
+    public String status(String token,String printer) throws RemoteException {
+        if(!validateToken(token)){
+            logger.warn("Authentication failed... invalid or expired token");
+            return "Authentication failed. Please log in again.";
+        }
+
         Optional<Printer> result = findPrinter(printer);
         if (result.isEmpty()) {
             logger.warn("Printer not found: " + printer);
@@ -118,7 +141,12 @@ public class PrintServer implements IPrintServer {
     }
 
     @Override
-    public String readConfig(String parameter) throws RemoteException {
+    public String readConfig(String token,String parameter) throws RemoteException {
+        if(!validateToken(token)){
+            logger.warn("Authentication failed... invalid or expired token");
+            return "Authentication failed. Please log in again.";
+        }
+
         String value = configs.get(parameter);
 
         if (value == null) {
@@ -132,7 +160,11 @@ public class PrintServer implements IPrintServer {
 
 
     @Override
-    public void setConfig(String parameter, String value) throws RemoteException {
+    public void setConfig(String token,String parameter, String value) throws RemoteException {
+        if(!validateToken(token)){
+            logger.warn("Authentication failed... invalid or expired token");
+        }
+
         configs.put(parameter, value);
         logger.info("Config set: " + parameter + " = " + value);
 
@@ -160,4 +192,30 @@ public class PrintServer implements IPrintServer {
         }
         return false;
     }
+    private String generateToken(String email) {
+        String token = Jwts.builder()
+                .setSubject(email)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 86400000))
+                .signWith(SignatureAlgorithm.HS256, key)
+                .compact();
+        logger.info("Generated Token: " + token);
+        return token;
+    }
+
+    private boolean validateToken(String token) {
+        try {
+            Jws<Claims> claims = Jwts.parser()
+                    .setSigningKey(key)
+                    .parseClaimsJws(token);
+            return claims.getBody().getExpiration().after(new Date());
+        } catch (SignatureException e) {
+            logger.warn("Invalid token signature.");
+            return false;
+        } catch (Exception e) {
+            logger.warn("Token validation error.");
+            return false;
+        }
+    }
+
 }

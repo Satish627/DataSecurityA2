@@ -10,15 +10,15 @@ public class Client {
             Scanner scanner = new Scanner(System.in);
 
             // Step 1: Login before accessing other functions
-            boolean isLoggedIn = false;
-            while (!isLoggedIn) {
+            String token= null;
+            while (token == null) {
                 System.out.print("Enter email: ");
                 String email = scanner.nextLine();
                 System.out.print("Enter password: ");
                 String password = scanner.nextLine();
 
-                isLoggedIn = server.login(email, password);
-                if (isLoggedIn) {
+                token = server.login(email, password);
+                if (token!= null) {
                     System.out.println("Login successful!");
                 } else {
                     System.out.println("Login failed. Please try again.");
@@ -44,31 +44,31 @@ public class Client {
                     case 1:
                         System.out.println("Enter the filename to print");
                         String filename = scanner.nextLine();
-                        server.print(filename, "Printer" + printer);
+                        server.print(token,filename, "Printer" + printer);
                         break;
                     case 2:
-                        System.out.println(server.queue("Printer" + printer));
+                        System.out.println(server.queue(token,"Printer" + printer));
                         break;
                     case 3:
                         System.out.println("Enter the job number to top");
                         int job = scanner.nextInt();
                         scanner.nextLine();
-                        server.topQueue("Printer" + printer, job);
+                        server.topQueue(token,"Printer" + printer, job);
                         break;
                     case 4:
-                        System.out.println(server.status("Printer" + printer));
+                        System.out.println(server.status(token,"Printer" + printer));
                         break;
                     case 5:
                         System.out.println("Enter the parameter to read");
                         String parameter = scanner.nextLine();
-                        System.out.println(server.readConfig(parameter));
+                        System.out.println(server.readConfig(token,parameter));
                         break;
                     case 6:
                         System.out.println("Enter the parameter to set");
                         String parameter1 = scanner.nextLine();
                         System.out.println("Enter the value to set");
                         String value = scanner.nextLine();
-                        server.setConfig(parameter1, value);
+                        server.setConfig(token,parameter1, value);
                         break;
 
                 }
