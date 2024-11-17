@@ -1,16 +1,15 @@
 package PrintServer;
-
-import models.Printer;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import PrintServer.models.Printer;
+import database.Database;
 import org.interfaces.IPrintServer;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.mindrot.jbcrypt.BCrypt;
+import org.models.TokenResponse;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 import java.rmi.AlreadyBoundException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -23,7 +22,6 @@ public class PrintServer implements IPrintServer {
     private static final Logger logger = LogManager.getLogger(PrintServer.class);
     private final Map<String, String> configs;
     private final List<Printer> printers;
-
     private static final List<Printer> initDummyPrinters = List.of(
         new Printer("Printer1"),
         new Printer("Printer2"),
@@ -38,22 +36,49 @@ public class PrintServer implements IPrintServer {
     }
 
     @Override
-    public boolean login(String email, String password) throws RemoteException {
-        return verifyPassword(email, password);
+    public TokenResponse login(String email, String password) throws RemoteException {
+        boolean isCorrectCredentials = Database.verifyUser(email, password);
+        if (!isCorrectCredentials) {
+            logger.warn("Invalid login attempt : "+ email);
+            return new TokenResponse(null, false);
+        }
+        String token = generateToken(email);
+        logger.info("Token generated successfully");
+        return new TokenResponse(token, true);
+
     }
 
     @Override
-    public void print(String filename, String printer) throws RemoteException {
+    public TokenResponse signUp(String email, String password) throws RemoteException {
+        boolean isUserAdded = Database.addUser(email, password);
+        if (!isUserAdded) {
+            logger.warn("User already exists: "+ email);
+            return new TokenResponse(null, false);
+        }
+        logger.info("User added successfully: "+ email);
+        String token = generateToken(email);
+        return new TokenResponse(token, true);
+    }
+
+    @Override
+    public void print(String filename, String printer, String token) throws RemoteException {
+        Optional<String> decoded = validateToken(token);
+        if (decoded.isEmpty()){
+            logger.warn("Invalid token");
+            return;
+        }
+        String email = decoded.get();
+
         Optional<Printer> result = findPrinter(printer);
         if (result.isEmpty()) {
             logger.warn("Printer not found: " + printer);
             return;
         }
-        result.get().print(filename);
+        result.get().print(filename, email );
     }
 
     @Override
-    public String queue(String printer) throws RemoteException {
+    public String queue(String printer, String token) throws RemoteException {
         Optional<Printer> result = findPrinter(printer);
         if (result.isEmpty()) {
             logger.warn("Printer not found: " + printer);
@@ -63,7 +88,7 @@ public class PrintServer implements IPrintServer {
     }
 
     @Override
-    public void topQueue(String printer, int job) throws RemoteException {
+    public void topQueue(String printer, int job, String token) throws RemoteException {
         Optional<Printer> result = findPrinter(printer);
         if (result.isEmpty()) {
             logger.warn("Printer not found: " + printer);
@@ -108,7 +133,7 @@ public class PrintServer implements IPrintServer {
     }
 
     @Override
-    public String status(String printer) throws RemoteException {
+    public String status(String printer, String token) throws RemoteException {
         Optional<Printer> result = findPrinter(printer);
         if (result.isEmpty()) {
             logger.warn("Printer not found: " + printer);
@@ -118,7 +143,7 @@ public class PrintServer implements IPrintServer {
     }
 
     @Override
-    public String readConfig(String parameter) throws RemoteException {
+    public String readConfig(String parameter, String token) throws RemoteException {
         String value = configs.get(parameter);
 
         if (value == null) {
@@ -132,7 +157,7 @@ public class PrintServer implements IPrintServer {
 
 
     @Override
-    public void setConfig(String parameter, String value) throws RemoteException {
+    public void setConfig(String parameter, String value, String token) throws RemoteException {
         configs.put(parameter, value);
         logger.info("Config set: " + parameter + " = " + value);
 
@@ -143,21 +168,36 @@ public class PrintServer implements IPrintServer {
                 .filter(printer -> printer.getName().equalsIgnoreCase(printerName))
                 .findFirst();
     }
-    public boolean verifyPassword(String email, String enteredPassword) {
-        try (BufferedReader reader = new BufferedReader(new FileReader("server/src/main/resources/userCredentials.txt"))) {
-            String credentials;
-            while ((credentials = reader.readLine()) != null) {
-                String[] parts = credentials.split(":");
-                String storedEmail = parts[0];
-                String storedHashedPassword = parts[1];
 
-                if (storedEmail.equalsIgnoreCase(email)) {
-                    return BCrypt.checkpw(enteredPassword, storedHashedPassword);
-                }
-            }
-        } catch (IOException e) {
-            logger.error("Error reading user credentials file", e);
-        }
-        return false;
+    private String generateToken(String email){
+        String secret = ConfigLoader.getProperty("jwt.secret");
+        String issuer = ConfigLoader.getProperty("jwt.issuer");
+        long expiration = Long.parseLong(ConfigLoader.getProperty("jwt.expiration"));
+
+        Algorithm algorithm = Algorithm.HMAC256(secret);
+
+        return JWT.create().withIssuer(issuer)
+                .withClaim("email", email)
+                .withExpiresAt(new Date(System.currentTimeMillis() + expiration))
+                .sign(algorithm);
     }
+
+    private Optional<String> validateToken(String token){
+        try{
+            String secret = ConfigLoader.getProperty("jwt:secret");
+            String issuer = ConfigLoader.getProperty("jwt:issuer");
+
+
+            Algorithm algorithm = Algorithm.HMAC256(secret);
+            JWTVerifier verifier = JWT.require(algorithm)
+                    .withIssuer(issuer)
+                    .build();
+            DecodedJWT jwt = verifier.verify(token);
+            return Optional.of(jwt.getClaim("email").asString());
+        }catch (Exception e){
+            logger.warn("Invalid token");
+            return Optional.empty();
+        }
+    }
+
 }

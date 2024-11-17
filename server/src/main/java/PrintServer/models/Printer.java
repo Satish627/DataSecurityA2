@@ -1,4 +1,4 @@
-package models;
+package PrintServer.models;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,8 +40,8 @@ public class Printer implements Serializable {
         return name + ": " + jobsQueue.size() + " jobs in queue";
     }
 
-    public void print(String filename) {
-        logger.info(name + ": Printing " + filename);
+    public void print(String filename, String email) {
+        logger.info(name + ": Printing " + filename + " for " + email);
     }
 
     public String getName() {

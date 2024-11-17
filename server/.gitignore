@@ -36,3 +36,9 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Ignore all .properties files
+*.properties
+
+# Optional: Ignore specific properties files in the resources folder
+src/main/resources/*.properties
