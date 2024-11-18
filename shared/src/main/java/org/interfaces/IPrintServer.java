@@ -1,5 +1,7 @@
 package org.interfaces;
 
+import org.models.Empty;
+import org.models.ServerResponse;
 import org.models.TokenResponse;
 
 import java.rmi.Remote;
@@ -10,13 +12,13 @@ public interface IPrintServer extends Remote{
     TokenResponse login(String email, String password) throws RemoteException;
 
     TokenResponse signUp(String email, String password) throws RemoteException;
-    void  print(String filename, String printer, String token) throws RemoteException;
-    String queue(String printer, String token) throws RemoteException;
-    void topQueue(String printer, int job, String token) throws RemoteException;
-    void start() throws RemoteException;
-    void stop() throws RemoteException;
-    void restart() throws RemoteException;
-    String status(String printer, String token) throws RemoteException;
-    String readConfig(String parameter, String token) throws RemoteException;
-    void setConfig(String parameter, String value, String token) throws RemoteException;
+    ServerResponse<Empty> print(String filename, String printer, String token) throws RemoteException;
+    ServerResponse<String> queue(String printer, String token) throws RemoteException;
+    ServerResponse<Empty>  topQueue(String printer, int job, String token) throws RemoteException;
+    ServerResponse<Empty>  start(String token) throws RemoteException;
+    ServerResponse<Empty>  stop(String token) throws RemoteException;
+    ServerResponse<Empty>  restart(String token) throws RemoteException;
+    ServerResponse<String> status(String printer, String token) throws RemoteException;
+    ServerResponse<String> readConfig(String parameter, String token) throws RemoteException;
+    ServerResponse<Empty> setConfig(String parameter, String value, String token) throws RemoteException;
 }

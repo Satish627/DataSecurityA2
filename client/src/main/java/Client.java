@@ -1,8 +1,9 @@
 import org.interfaces.IPrintServer;
+import org.models.Empty;
+import org.models.ServerResponse;
 import org.models.TokenResponse;
 
 import java.rmi.RemoteException;
-import java.util.Optional;
 import java.util.Scanner;
 
 public class Client {
@@ -12,7 +13,6 @@ public class Client {
             IPrintServer server = GetServer.getServerFromRmi();
             Scanner scanner = new Scanner(System.in);
             String token = login(server, scanner);
-
             while (true) {
                 System.out.println("Select a printer");
                 System.out.println("1. Printer1 , 2. Printer2, 3. Printer3");
@@ -32,31 +32,41 @@ public class Client {
                     case 1:
                         System.out.println("Enter the filename to print");
                         String filename = scanner.nextLine();
-                        server.print(filename, "Printer" + printer, token);
+                        ServerResponse<Empty> response = server.print(filename, "Printer" + printer, token);
+                        handleResponse(response);
                         break;
                     case 2:
-                        System.out.println(server.queue("Printer" + printer, token));
+                        ServerResponse<String> response1 = server.queue("Printer" + printer, token);
+                        handleResponse(response1);
                         break;
                     case 3:
                         System.out.println("Enter the job number to top");
                         int job = scanner.nextInt();
                         scanner.nextLine();
-                        server.topQueue("Printer" + printer, job, token);
+                        ServerResponse<Empty> serverResponse = server.topQueue("Printer" + printer, job, token);
+                        handleResponse(serverResponse);
                         break;
                     case 4:
-                        System.out.println(server.status("Printer" + printer, token));
+                        ServerResponse<String> status = server.status("Printer" + printer, token);
+                        handleResponse(status);
+                        if (status.wasSuccess()) System.out.println(status);
                         break;
                     case 5:
                         System.out.println("Enter the parameter to read");
                         String parameter = scanner.nextLine();
-                        System.out.println(server.readConfig(parameter, token));
+                        ServerResponse<String> serverResponse1 = server.readConfig(parameter, token);
+                        handleResponse(serverResponse1);
+                        if (serverResponse1.wasSuccess())
+                            System.out.println(serverResponse1);
                         break;
                     case 6:
                         System.out.println("Enter the parameter to set");
                         String parameter1 = scanner.nextLine();
                         System.out.println("Enter the value to set");
                         String value = scanner.nextLine();
-                        server.setConfig(parameter1, value, token);
+
+                        ServerResponse<Empty> serverResponse2 = server.setConfig(parameter1, value, token);
+                        handleResponse(serverResponse2);
                         break;
                     default:
                         System.out.println("Invalid choice, Please try again");
@@ -70,6 +80,15 @@ public class Client {
         }
     }
 
+
+    private static void handleResponse(ServerResponse response) {
+        if (!response.wasAllowed()) {
+            System.out.println("You are not allowed to perform this action");
+        }
+        if (!response.wasSuccess()) {
+            System.out.println("Action failed");
+        }
+    }
 
     private static String login(IPrintServer server, Scanner scanner) throws RemoteException {
         while (true) {
@@ -88,7 +107,7 @@ public class Client {
                     password = scanner.nextLine();
                     TokenResponse loginResponse = server.login(email, password);
                     if (loginResponse.wasSuccessful()) {
-                        return loginResponse.getToken();
+                        return loginResponse.token();
                     } else {
                         System.out.println("Invalid credentials, Please try again");
                     }
@@ -99,7 +118,7 @@ public class Client {
                     password = scanner.nextLine();
                     TokenResponse signUpResponse = server.signUp(email, password);
                     if (signUpResponse.wasSuccessful()) {
-                        return signUpResponse.getToken();
+                        return signUpResponse.token();
                     } else {
                         System.out.println("Invalid credentials, Please try again");
                     }

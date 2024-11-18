@@ -4,37 +4,42 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.mindrot.jbcrypt.BCrypt;
 
+import javax.swing.text.html.Option;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class Database {
     private static final String USERS_FILE = "server/src/main/resources/users.json";
-    private static final String ROLES_FILE = "server/src/main/resources/roles.json";
 
-    public static boolean addUser(String email, String password){
+    public static Optional<User> addUser(String email, String password){
         List<User> users = getAllUsers();
         boolean userExists = users.stream().anyMatch(user -> user.getEmail().equals(email));
         if (userExists) {
-            return false;
+            return Optional.empty();
         }
 
         String hashed = BCrypt.hashpw(password, BCrypt.gensalt());
         User user = new User(email, hashed);
         users.add(user);
         saveUsers(users);
-        return true;
+        return Optional.of(user);
     }
 
-    public static boolean verifyUser(String email, String password){
+    public static Optional<User> verifyUser(String email, String password){
         List<User> users = getAllUsers();
         User user = users.stream().filter(u -> u.getEmail().equals(email)).findFirst().orElse(null);
         if (user == null) {
-            return false;
+            return Optional.empty();
         }
-        return BCrypt.checkpw(password, user.getHashedPassword());
+        boolean isCorrectPassword = BCrypt.checkpw(password, user.getHashedPassword());
+        if (!isCorrectPassword) {
+            return Optional.empty();
+        }
+        return Optional.of(user);
     }
 
     private static List<User> getAllUsers(){

@@ -6,13 +6,20 @@ public class User {
     private final String email;
     private final String hashedPassword;
 
-    // Constructor
+    private final Role role;
+
+    public User(String email, String hashedPassword, String role) {
+        this.email = email;
+        this.hashedPassword = hashedPassword;
+        this.role = Role.valueOf(role);
+    }
+
     public User(String email, String hashedPassword) {
         this.email = email;
         this.hashedPassword = hashedPassword;
+        this.role = Role.ORDINARY;
     }
 
-    // Getters
     public String getEmail() {
         return email;
     }
@@ -21,18 +28,30 @@ public class User {
         return hashedPassword;
     }
 
+    public Role getRole() {
+        return role;
+    }
+
     // Convert User object to JSONObject
     public JSONObject toJson() {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("email", email);
         jsonObject.put("hashedPassword", hashedPassword);
+        jsonObject.put("role", role.toString());
         return jsonObject;
     }
 
-    // Static method to create a User from JSONObject
     public static User fromJson(JSONObject jsonObject) {
         String email = jsonObject.getString("email");
         String hashedPassword = jsonObject.getString("hashedPassword");
-        return new User(email, hashedPassword);
+        String role = jsonObject.getString("role");
+        return new User(email, hashedPassword, role);
+    }
+
+    public enum Role{
+        MANAGER,
+        JANITOR,
+        POWER,
+        ORDINARY
     }
 }
