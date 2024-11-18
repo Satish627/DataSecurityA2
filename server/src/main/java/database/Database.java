@@ -12,6 +12,7 @@ import java.util.List;
 
 public class Database {
     private static final String USERS_FILE = "server/src/main/resources/users.json";
+    private static final String ROLES_FILE = "server/src/main/resources/roles.json";
 
     public static boolean addUser(String email, String password){
         List<User> users = getAllUsers();
