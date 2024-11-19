@@ -27,9 +27,10 @@ public class PrintServer implements IPrintServer {
     private final Map<String, String> configs;
     private final List<Printer> printers;
 
-    private final Map<String, List<RolePermissions.PrintServerMethods>> ROLE_PERMISSIONS =
-            RolePermissions.getRolePermissions("server/src/main/resources/permissions.json");
 
+
+    private final Map<String, List<UserPermissions.PrintServerMethods>> USER_PERMISSIONS =
+            UserPermissions.getUserPermissions("server/src/main/resources/permissions.json");
     private static boolean hasStarted = true;
     private static final List<Printer> initDummyPrinters = List.of(
             new Printer("Printer1"),
@@ -76,15 +77,21 @@ public class PrintServer implements IPrintServer {
             logger.warn("Server not started");
             return new TokenResponse(null, false);
         }
-        Optional<User> addResponse = Database.addUser(email, password);
+
+        String permissionsKey = email.contains("@") ? email.split("@")[0] : email;
+
+        Optional<User> addResponse = Database.addUser(email, password, permissionsKey);
         if (addResponse.isEmpty()) {
             logger.warn("User already exists: " + email);
             return new TokenResponse(null, false);
         }
-        logger.info("User added successfully: " + email);
+
+        logger.info("User added successfully: " + email + " with permissionsKey: " + permissionsKey);
+
         String token = generateToken(addResponse.get());
         return new TokenResponse(token, true);
     }
+
 
     @Override
     public ServerResponse<Empty> print(String filename, String printer, String token) throws RemoteException {
@@ -92,7 +99,7 @@ public class PrintServer implements IPrintServer {
             logger.warn("Server not started");
             return ServerResponse.NOT_ALLOWED();
         }
-        if (isRestricted(token, RolePermissions.PrintServerMethods.PRINT)) {
+        if (isRestricted(token, UserPermissions.PrintServerMethods.PRINT)) {
             return ServerResponse.NOT_ALLOWED();
         }
         Optional<String> decoded = validateToken(token);
@@ -117,7 +124,7 @@ public class PrintServer implements IPrintServer {
             logger.warn("Server not started");
             return ServerResponse.NOT_ALLOWED("");
         }
-        if (isRestricted(token, RolePermissions.PrintServerMethods.QUEUE)) {
+        if (isRestricted(token, UserPermissions.PrintServerMethods.QUEUE)) {
             return ServerResponse.NOT_ALLOWED("");
         }
         Optional<Printer> result = findPrinter(printer);
@@ -134,7 +141,7 @@ public class PrintServer implements IPrintServer {
             logger.warn("Server not started");
             return ServerResponse.NOT_ALLOWED();
         }
-        if (isRestricted(token, RolePermissions.PrintServerMethods.TOP_QUEUE)) {
+        if (isRestricted(token, UserPermissions.PrintServerMethods.TOP_QUEUE)) {
             return ServerResponse.NOT_ALLOWED();
         }
         Optional<Printer> result = findPrinter(printer);
@@ -152,7 +159,7 @@ public class PrintServer implements IPrintServer {
             logger.warn("Server already started");
             return ServerResponse.NOT_ALLOWED();
         }
-        if (isRestricted(token, RolePermissions.PrintServerMethods.START)) {
+        if (isRestricted(token, UserPermissions.PrintServerMethods.START)) {
             return ServerResponse.NOT_ALLOWED();
         }
         hasStarted = true;
@@ -165,7 +172,7 @@ public class PrintServer implements IPrintServer {
             logger.warn("Server not started");
             return ServerResponse.NOT_ALLOWED();
         }
-        if (isRestricted(token, RolePermissions.PrintServerMethods.STOP)) {
+        if (isRestricted(token, UserPermissions.PrintServerMethods.STOP)) {
             return ServerResponse.NOT_ALLOWED();
         }
         hasStarted = false;
@@ -174,7 +181,7 @@ public class PrintServer implements IPrintServer {
 
     @Override
     public ServerResponse<Empty> restart(String token) throws RemoteException {
-        if (isRestricted(token, RolePermissions.PrintServerMethods.RESTART)) {
+        if (isRestricted(token, UserPermissions.PrintServerMethods.RESTART)) {
             return ServerResponse.NOT_ALLOWED();
         }
         logger.info("Restarting print server...");
@@ -190,7 +197,7 @@ public class PrintServer implements IPrintServer {
             return ServerResponse.NOT_ALLOWED("");
         }
 
-        if (isRestricted(token, RolePermissions.PrintServerMethods.STATUS)) {
+        if (isRestricted(token, UserPermissions.PrintServerMethods.STATUS)) {
             return ServerResponse.NOT_ALLOWED("");
         }
         Optional<Printer> result = findPrinter(printer);
@@ -207,7 +214,7 @@ public class PrintServer implements IPrintServer {
             logger.warn("Server not started");
             return ServerResponse.NOT_ALLOWED("");
         }
-        if (isRestricted(token, RolePermissions.PrintServerMethods.READ_CONFIG)) {
+        if (isRestricted(token, UserPermissions.PrintServerMethods.READ_CONFIG)) {
             return ServerResponse.NOT_ALLOWED("");
         }
         String value = configs.get(parameter);
@@ -228,7 +235,7 @@ public class PrintServer implements IPrintServer {
             return ServerResponse.NOT_ALLOWED();
         }
 
-        if (isRestricted(token, RolePermissions.PrintServerMethods.SET_CONFIG)) {
+        if (isRestricted(token, UserPermissions.PrintServerMethods.SET_CONFIG)) {
             return ServerResponse.NOT_ALLOWED();
         }
         configs.put(parameter, value);
@@ -251,7 +258,7 @@ public class PrintServer implements IPrintServer {
 
         return JWT.create().withIssuer(issuer)
                 .withClaim("email", user.getEmail())
-                .withClaim("role", user.getRole().toString())
+                .withClaim("permissionKey",user.getPermissionsKey())
                 .withExpiresAt(new Date(System.currentTimeMillis() + expiration))
                 .sign(algorithm);
     }
@@ -279,15 +286,28 @@ public class PrintServer implements IPrintServer {
             return Optional.empty();
         }
     }
-
-    private boolean isRestricted(String token, RolePermissions.PrintServerMethods method) {
+    private boolean isRestricted(String token, UserPermissions.PrintServerMethods method) {
         Optional<DecodedJWT> decodedJWT = decodedJWT(token);
         if (decodedJWT.isEmpty()) {
+            logger.warn("Token validation failed");
             return true;
         }
-        String role = decodedJWT.get().getClaim("role").asString();
 
-        return ! (ROLE_PERMISSIONS.containsKey(role) &&
-                ROLE_PERMISSIONS.get(role).contains(method));
+        String permissionKey = decodedJWT.get().getClaim("permissionKey").asString();
+        logger.info("Checking permissions for key: " + permissionKey);
+
+        if (!USER_PERMISSIONS.containsKey(permissionKey)) {
+            logger.warn("Permissions not found for key: " + permissionKey);
+            return true;
+        }
+
+        List<UserPermissions.PrintServerMethods> allowedMethods = USER_PERMISSIONS.get(permissionKey);
+        if (!allowedMethods.contains(method)) {
+            logger.warn("Access denied for method: " + method + " for key: " + permissionKey);
+            return true;
+        }
+
+        return false;
     }
+
 }

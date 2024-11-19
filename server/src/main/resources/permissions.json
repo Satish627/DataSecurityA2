@@ -1,32 +1,9 @@
 {
-  "MANAGER": [
-    "START",
-    "STOP",
-    "RESTART",
-    "STATUS",
-    "READ_CONFIG",
-    "SET_CONFIG",
-    "PRINT",
-    "QUEUE",
-    "TOP_QUEUE"
-  ],
-  "JANITOR": [
-    "START",
-    "STOP",
-    "RESTART",
-    "STATUS",
-    "READ_CONFIG",
-    "SET_CONFIG",
-    "PRINT",
-    "QUEUE"
-  ],
-  "POWER": [
-    "TOP_QUEUE",
-    "PRINT",
-    "QUEUE"
-  ],
-  "ORDINARY": [
-    "PRINT",
-    "QUEUE"
-  ]
+    "alice": ["PRINT", "QUEUE", "TOP_QUEUE", "START", "STOP", "RESTART", "STATUS", "READ_CONFIG", "SET_CONFIG"],
+    "bob": ["START", "STOP", "RESTART", "STATUS", "READ_CONFIG", "SET_CONFIG"],
+    "cecilia": ["PRINT", "TOP_QUEUE", "QUEUE", "RESTART"],
+    "david": ["PRINT", "QUEUE"],
+    "erica": ["PRINT", "QUEUE"],
+    "fred": ["PRINT", "QUEUE"],
+    "george": ["PRINT", "QUEUE"]
 }

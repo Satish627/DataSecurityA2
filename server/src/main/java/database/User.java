@@ -5,21 +5,19 @@ import org.json.JSONObject;
 public class User {
     private final String email;
     private final String hashedPassword;
+    private String permissionsKey;
 
-    private final Role role;
-
-    public User(String email, String hashedPassword, String role) {
+    public User(String email, String hashedPassword, String permissionsKey) {
         this.email = email;
         this.hashedPassword = hashedPassword;
-        this.role = Role.valueOf(role);
+        this.permissionsKey = permissionsKey;
     }
 
     public User(String email, String hashedPassword) {
         this.email = email;
         this.hashedPassword = hashedPassword;
-        this.role = Role.ORDINARY;
+        this.permissionsKey = email;
     }
-
     public String getEmail() {
         return email;
     }
@@ -28,30 +26,26 @@ public class User {
         return hashedPassword;
     }
 
-    public Role getRole() {
-        return role;
+    public String getPermissionsKey() {
+        return permissionsKey;
     }
 
-    // Convert User object to JSONObject
+    public void setPermissionsKey(String permissionsKey) {
+        this.permissionsKey = permissionsKey;
+    }
+
     public JSONObject toJson() {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("email", email);
         jsonObject.put("hashedPassword", hashedPassword);
-        jsonObject.put("role", role.toString());
+        jsonObject.put("permissionsKey", permissionsKey);
         return jsonObject;
     }
 
     public static User fromJson(JSONObject jsonObject) {
         String email = jsonObject.getString("email");
         String hashedPassword = jsonObject.getString("hashedPassword");
-        String role = jsonObject.getString("role");
-        return new User(email, hashedPassword, role);
-    }
-
-    public enum Role{
-        MANAGER,
-        JANITOR,
-        POWER,
-        ORDINARY
+        String permissionsKey = jsonObject.optString("permissionsKey", email); // Default to email if not present
+        return new User(email, hashedPassword, permissionsKey);
     }
 }

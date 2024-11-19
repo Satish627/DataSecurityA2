@@ -1,5 +1,17 @@
-[{
-    "role": "POWER",
-    "hashedPassword": "$2a$10$iLf0KBtDoT09q6MleHFTEeSrAKZ9yW1YwtM5xqmXgR08j/GrDWxay",
-    "email": "sachin@sachin.com"
-}]
+[
+    {
+        "hashedPassword": "$2a$10$iLf0KBtDoT09q6MleHFTEeSrAKZ9yW1YwtM5xqmXgR08j/GrDWxay",
+        "email": "sachin@sachin.com",
+        "permissionsKey": "sachin@sachin.com"
+    },
+    {
+        "hashedPassword": "$2a$10$YN71WE0vs5lqjmxGVE8Gc.i44B2gyQokkS7Va8W2WZDQvTjqJ89l.",
+        "email": "david@gmail.com",
+        "permissionsKey": "david"
+    },
+    {
+        "hashedPassword": "$2a$10$8jvpDl7bMWCuU5oB76D5o.2F6wsTDqTZGS.9hLxksWnivHN6OB3Li",
+        "email": "alice@gmail.com",
+        "permissionsKey": "alice"
+    }
+]

@@ -15,7 +15,7 @@ import java.util.Optional;
 public class Database {
     private static final String USERS_FILE = "server/src/main/resources/users.json";
 
-    public static Optional<User> addUser(String email, String password){
+    public static Optional<User> addUser(String email, String password, String permissionsKey) {
         List<User> users = getAllUsers();
         boolean userExists = users.stream().anyMatch(user -> user.getEmail().equals(email));
         if (userExists) {
@@ -23,11 +23,12 @@ public class Database {
         }
 
         String hashed = BCrypt.hashpw(password, BCrypt.gensalt());
-        User user = new User(email, hashed);
+        User user = new User(email, hashed, permissionsKey); // Set permissionsKey explicitly
         users.add(user);
         saveUsers(users);
         return Optional.of(user);
     }
+
 
     public static Optional<User> verifyUser(String email, String password){
         List<User> users = getAllUsers();
