@@ -68,3 +68,13 @@ com.auth0.jwt.exceptions.TokenExpiredException: The Token has expired on 2024-11
 2024-11-18 13:16:05 INFO PrintServer - Server started.....
 2024-11-18 13:16:15 INFO PrintServer - Token generated successfully
 2024-11-18 13:16:19 WARN Printer - Printer1: Invalid job index: 1
+2024-11-19 19:17:57 INFO PrintServer - Initializing PrintServer...
+2024-11-19 19:17:57 INFO PrintServer - Server has started....
+2024-11-19 19:17:57 INFO PrintServer - Server started.....
+2024-11-19 19:18:24 INFO PrintServer - User added successfully: sachin@sachin.com
+2024-11-19 19:19:32 WARN PrintServer - Invalid login attempt : sachin@sachin.com
+2024-11-19 19:19:42 WARN PrintServer - User already exists: sachin@sachin.com
+2024-11-19 19:19:58 WARN PrintServer - User already exists: sachin@sachin.com
+2024-11-19 19:20:19 INFO PrintServer - User added successfully: sachin@sachin12.com
+2024-11-19 19:20:27 INFO Printer - Printer1: Printing asda for sachin@sachin12.com
+2024-11-19 19:20:47 INFO PrintServer - Token generated successfully
