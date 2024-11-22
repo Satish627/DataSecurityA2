@@ -265,7 +265,6 @@ public class PrintServer implements IPrintServer {
             return Optional.empty();
         }
     }
-
     private Optional<DecodedJWT> decodedJWT(String token){
         try {
             String secret = ConfigLoader.getProperty("jwt.secret");
@@ -276,18 +275,30 @@ public class PrintServer implements IPrintServer {
 
             return Optional.of(verifier.verify(token));
         } catch (IllegalArgumentException | JWTVerificationException e) {
+            logger.warn("Invalid token: {}", token, e);
             return Optional.empty();
         }
     }
 
+
     private boolean isRestricted(String token, RolePermissions.PrintServerMethods method) {
         Optional<DecodedJWT> decodedJWT = decodedJWT(token);
         if (decodedJWT.isEmpty()) {
+            logger.warn("Access denied: Invalid or missing token.");
             return true;
         }
+
         String role = decodedJWT.get().getClaim("role").asString();
 
-        return ! (ROLE_PERMISSIONS.containsKey(role) &&
+        boolean isNotAllowed = !(ROLE_PERMISSIONS.containsKey(role) &&
                 ROLE_PERMISSIONS.get(role).contains(method));
+
+        if (isNotAllowed) {
+            String email = decodedJWT.get().getClaim("email").asString();
+            logger.warn("Access denied: User '{}' with role '{}' is not allowed to perform action '{}'.", email, role, method);
+        }
+
+        return isNotAllowed;
     }
+
 }
